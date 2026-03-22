@@ -1,0 +1,14 @@
+name: qdata-cpp
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - ninja
+  - make
+  - cxx-compiler
+  - pkg-config
+  - r-base
+  - r-qs2
+  - r-stringi
+  - tbb-devel
+  - zstd
