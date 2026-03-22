@@ -1,29 +1,9 @@
-/* qs - Quick Serialization of R Objects
- Copyright (C) 2019-present Travers Ching
- 
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU Affero General Public License as
- published by the Free Software Foundation, either version 3 of the
- License, or (at your option) any later version.
- 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU Affero General Public License for more details.
- 
- You should have received a copy of the GNU Affero General Public License
- along with this program.  If not, see <https://www.gnu.org/licenses/>.
- 
- You can contact the author at:
- https://github.com/traversc/qs
- */
-
-/* The following shuffle routines were adapted from the Blosc meta-compression library 
- */
-
-/*  Blosc - Blocked Shuffling and Compression Library
- Author: Francesc Alted <francesc@blosc.org>
- See src/BLOSC_shuffle/BLOSC for details about copyright and rights to use. 
+/* qdata-cpp
+ *
+ * The shuffle routines below were adapted from the Blosc meta-compression
+ * library. See the repository root LICENSE for the project license, and see
+ * THIRD_PARTY_NOTICES.md plus LICENSES/BLOSC-BSD-3-Clause.txt for upstream
+ * attribution and redistribution terms for the Blosc-derived code.
  */
 
 

@@ -33,6 +33,11 @@ int main() {
 
 `zstd` is required but `TBB` is optional only if you want multithreading.
 
+## Testing
+
+The test suite is driven through `Rscript` and requires the `qs2`, `stringi`,
+and `stringfish` packages when `QDATA_BUILD_TESTS=ON`.
+
 ## Core qdata types
 
 qdata is built around a small set of data types:

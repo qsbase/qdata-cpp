@@ -29,4 +29,4 @@ reader_node -> decompressor_node -> sequencer_node -> deserializer_node
 Notes:
 
 - the old full-graph implementation lived in the vendored `qdata-cpp` tree before this cleanup
-- if we revisit the idea later, git history and the performance notes in [perf_experiments.md](/home/ted/Repo/qs2/inst/include/qdata-cpp/docs/perf_experiments.md) are the reference
+- if we revisit the idea later, git history and the performance notes in [perf_experiments.md](../perf_experiments.md) are the reference

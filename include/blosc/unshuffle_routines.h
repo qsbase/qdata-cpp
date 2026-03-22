@@ -1,9 +1,8 @@
-/* The following shuffle routines were adapted from the Blosc meta-compression library 
- */
-
-/*  Blosc - Blocked Shuffling and Compression Library
- Author: Francesc Alted <francesc@blosc.org>
- See src/BLOSC_shuffle/BLOSC for details about copyright and rights to use. 
+/* qdata-cpp
+ *
+ * The routines below were adapted from the Blosc meta-compression library.
+ * See THIRD_PARTY_NOTICES.md plus LICENSES/BLOSC-BSD-3-Clause.txt for upstream
+ * attribution and redistribution terms for the Blosc-derived code.
  */
 
 

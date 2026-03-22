@@ -97,29 +97,29 @@ if(QDATA_BUILD_TESTS)
         add_test(NAME qdata_odr_headers COMMAND qdata_odr_headers)
     endif()
 
-    find_program(RSCRIPT_EXECUTABLE Rscript)
-    if(RSCRIPT_EXECUTABLE)
-        execute_process(
-            COMMAND ${RSCRIPT_EXECUTABLE} -e "cat(as.integer(requireNamespace('qs2', quietly = TRUE)))"
-            OUTPUT_VARIABLE QDATA_HAS_QS2
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-
-        if(QDATA_HAS_QS2 STREQUAL "1")
-            add_test(
-                NAME qdata_builtin_write_support
-                COMMAND ${RSCRIPT_EXECUTABLE}
-                        ${CMAKE_CURRENT_SOURCE_DIR}/tests/r/builtin_write_support.R
-                        $<TARGET_FILE:qdata_write_builtin_support>
-                        ${CMAKE_CURRENT_BINARY_DIR}/builtin_cases
-            )
-            add_test(
-                NAME qdata_roundtrip_qs2
-                COMMAND ${RSCRIPT_EXECUTABLE}
-                        ${CMAKE_CURRENT_SOURCE_DIR}/tests/r/roundtrip_testing.R
-                        $<TARGET_FILE:qdata_roundtrip_file>
-                        $<TARGET_FILE:qdata_roundtrip_memory>
-            )
-        endif()
+    find_program(RSCRIPT_EXECUTABLE Rscript REQUIRED)
+    execute_process(
+        COMMAND ${RSCRIPT_EXECUTABLE} -e
+                "pkgs <- c('qs2', 'stringi', 'stringfish'); cat(as.integer(all(vapply(pkgs, requireNamespace, logical(1), quietly = TRUE))))"
+        OUTPUT_VARIABLE QDATA_HAS_R_TEST_DEPS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(NOT QDATA_HAS_R_TEST_DEPS STREQUAL "1")
+        message(FATAL_ERROR "QDATA_BUILD_TESTS=ON requires Rscript with the qs2, stringi, and stringfish packages installed.")
     endif()
+
+    add_test(
+        NAME qdata_builtin_write_support
+        COMMAND ${RSCRIPT_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/r/builtin_write_support.R
+                $<TARGET_FILE:qdata_write_builtin_support>
+                ${CMAKE_CURRENT_BINARY_DIR}/builtin_cases
+    )
+    add_test(
+        NAME qdata_roundtrip_qs2
+        COMMAND ${RSCRIPT_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/r/roundtrip_testing.R
+                $<TARGET_FILE:qdata_roundtrip_file>
+                $<TARGET_FILE:qdata_roundtrip_memory>
+    )
 endif()
