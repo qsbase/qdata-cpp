@@ -1,0 +1,64 @@
+name: qdata-cpp
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  standalone:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: macos-latest
+            label: macOS
+          - os: windows-latest
+            label: Windows
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Conda environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: qdata-cpp
+          auto-activate-base: false
+          channels: conda-forge
+          channel-priority: strict
+          environment-file: environment.yml
+
+      - name: Show toolchain
+        run: |
+          cmake --version
+          ctest --version
+          Rscript --version
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DQDATA_BUILD_BENCHMARKS=ON
+          -DQDATA_BUILD_EXAMPLES=ON
+          -DQDATA_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        env:
+          QS_EXTENDED_TESTS: "1"
+        run: ctest --test-dir build --output-on-failure -V

@@ -10,5 +10,6 @@ dependencies:
   - r-base
   - r-qs2
   - r-stringi
+  - r-stringfish
   - tbb-devel
   - zstd
