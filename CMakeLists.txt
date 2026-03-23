@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(qdata_cpp VERSION 0.0.1 LANGUAGES CXX)
+project(qdata_cpp VERSION 1.0.0 LANGUAGES CXX)
 
 option(QDATA_USE_TBB "Link oneTBB for multithreaded qdata/io consumers" ON)
 
