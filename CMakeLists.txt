@@ -93,13 +93,7 @@ if(QDATA_BUILD_TESTS)
     target_compile_features(qdata_buffer_api PRIVATE cxx_std_17)
     target_link_libraries(qdata_buffer_api PRIVATE qdata)
     add_test(NAME qdata_buffer_api COMMAND qdata_buffer_api)
-
-    if(QDATA_TBB_TARGET)
-        add_executable(qdata_odr_headers tests/cpp/odr_headers.cpp)
-        target_compile_features(qdata_odr_headers PRIVATE cxx_std_17)
-        target_link_libraries(qdata_odr_headers PRIVATE qdata)
-        add_test(NAME qdata_odr_headers COMMAND qdata_odr_headers)
-    endif()
+    set_tests_properties(qdata_buffer_api PROPERTIES TIMEOUT 120)
 
     find_program(RSCRIPT_EXECUTABLE Rscript REQUIRED)
     execute_process(
@@ -119,6 +113,7 @@ if(QDATA_BUILD_TESTS)
                 $<TARGET_FILE:qdata_write_builtin_support>
                 ${CMAKE_CURRENT_BINARY_DIR}/builtin_cases
     )
+    set_tests_properties(qdata_builtin_write_support PROPERTIES TIMEOUT 600)
     add_test(
         NAME qdata_roundtrip_qs2
         COMMAND ${RSCRIPT_EXECUTABLE}

@@ -11,8 +11,16 @@ on:
 
 jobs:
   linux:
-    name: Ubuntu
+    name: Ubuntu (${{ matrix.label }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: TBB ON
+            qdata_use_tbb: "ON"
+          - label: TBB OFF
+            qdata_use_tbb: "OFF"
 
     defaults:
       run:
@@ -46,11 +54,12 @@ jobs:
           Rscript --version
 
       - name: Configure
-        run: >
-          cmake -S . -B build -G Ninja
-          -DQDATA_BUILD_BENCHMARKS=ON
-          -DQDATA_BUILD_EXAMPLES=ON
-          -DQDATA_BUILD_TESTS=ON
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DQDATA_USE_TBB=${{ matrix.qdata_use_tbb }} \
+            -DQDATA_BUILD_BENCHMARKS=ON \
+            -DQDATA_BUILD_EXAMPLES=ON \
+            -DQDATA_BUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build --parallel
