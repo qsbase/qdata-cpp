@@ -1,5 +1,9 @@
 # qdata-cpp
 
+[![Linux CI](https://github.com/qsbase/qdata-cpp/actions/workflows/linux.yml/badge.svg)](https://github.com/qsbase/qdata-cpp/actions/workflows/linux.yml)
+[![macOS CI](https://github.com/qsbase/qdata-cpp/actions/workflows/macos.yml/badge.svg)](https://github.com/qsbase/qdata-cpp/actions/workflows/macos.yml)
+[![Windows CI](https://github.com/qsbase/qdata-cpp/actions/workflows/windows.yml/badge.svg)](https://github.com/qsbase/qdata-cpp/actions/workflows/windows.yml)
+
 `qdata-cpp` is the standalone C++17 library for the qdata format.
 
 It is part of the `qs2` R package for efficient serialization, but is useful well beyond: in C++, qdata gives you a flexible, intuitive model for variable data structures, with very strong compression and performance characteristics.

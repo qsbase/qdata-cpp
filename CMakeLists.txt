@@ -43,6 +43,10 @@ endif()
 add_library(qdata INTERFACE)
 add_library(qdata::qdata ALIAS qdata)
 target_compile_features(qdata INTERFACE cxx_std_17)
+target_compile_options(qdata
+    INTERFACE
+    $<$<CXX_COMPILER_ID:MSVC>:/bigobj>
+)
 target_include_directories(qdata
     INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

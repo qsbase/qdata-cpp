@@ -54,6 +54,8 @@ jobs:
       - name: Configure
         run: >
           cmake -S . -B build -G Ninja
+          -DCMAKE_C_COMPILER=cl
+          -DCMAKE_CXX_COMPILER=cl
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
           -DVCPKG_TARGET_TRIPLET=x64-windows
           -DQDATA_BUILD_BENCHMARKS=ON
