@@ -1,4 +1,4 @@
-name: qdata-cpp
+name: Linux CI
 
 on:
   push:
@@ -10,42 +10,39 @@ on:
   workflow_dispatch:
 
 jobs:
-  standalone:
-    name: ${{ matrix.label }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            label: Linux
-          - os: macos-latest
-            label: macOS
-          - os: windows-latest
-            label: Windows
+  linux:
+    name: Ubuntu
+    runs-on: ubuntu-latest
 
     defaults:
       run:
-        shell: bash -el {0}
+        shell: bash
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Conda environment
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config libzstd-dev libtbb-dev libicu-dev
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
         with:
-          activate-environment: qdata-cpp
-          auto-activate-base: false
-          channels: conda-forge
-          channel-priority: strict
-          environment-file: environment.yml
+          use-public-rspm: true
+
+      - name: Install R test packages
+        run: |
+          Rscript -e "install.packages(c('qs2', 'stringi', 'stringfish'), Ncpus = max(1L, parallel::detectCores()))"
+          Rscript -e "pkgs <- c('qs2', 'stringi', 'stringfish'); stopifnot(all(vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)))"
 
       - name: Show toolchain
         run: |
           cmake --version
+          ninja --version
           ctest --version
+          c++ --version
           Rscript --version
 
       - name: Configure
