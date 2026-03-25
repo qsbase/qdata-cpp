@@ -314,7 +314,7 @@ struct BlockCompressReaderMT {
         OrderedBlock block;
         while( true ) {
             if( sequencer_node.try_get(block) ) {
-                decompressor_limiter_node.decrementer().try_put(tbb::flow::continue_msg{});
+                qio::tbb_compat::decrementer(decompressor_limiter_node).try_put(tbb::flow::continue_msg{});
                 available_blocks.push(current_block);
                 current_block = block.block;
                 current_blocksize = block.blocksize;
