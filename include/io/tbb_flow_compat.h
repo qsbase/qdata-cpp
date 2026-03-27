@@ -4,21 +4,24 @@
 #include <utility>
 #include <tbb/flow_graph.h>
 
-// TBB 2019 exposes only <tbb/flow_graph.h> and uses source_node/decrement.
-// oneTBB ships its canonical flow-graph API under <oneapi/tbb/flow_graph.h>
-// and uses input_node/decrementer(). Probe that header layout instead of
-// version macros: some wrapper headers do not surface TBB_INTERFACE_VERSION,
-// and mixing version headers from different packages can mis-detect the actual
-// flow-graph API in use. Callers can override this probe if they know better.
+// TBB 2019 uses source_node/decrement and surfaces TBB_INTERFACE_VERSION via
+// tbb_stddef.h. oneTBB uses input_node/decrementer(), but <tbb/flow_graph.h>
+// wrappers do not always surface the version macro. Prefer the interface
+// version when the active flow-graph include exposes it, otherwise fall back
+// to the old-header guard instead of probing unrelated oneapi/ headers that
+// may come from a different package on the include path. Callers can override
+// this probe if they know better.
 #ifndef QIO_TBB_FLOW_USES_INPUT_NODE
-#if defined(__has_include)
-#if __has_include(<oneapi/tbb/flow_graph.h>)
+#if defined(TBB_INTERFACE_VERSION)
+#if TBB_INTERFACE_VERSION >= 12000
 #define QIO_TBB_FLOW_USES_INPUT_NODE 1
 #else
 #define QIO_TBB_FLOW_USES_INPUT_NODE 0
 #endif
-#else
+#elif defined(__TBB_tbb_stddef_H)
 #define QIO_TBB_FLOW_USES_INPUT_NODE 0
+#else
+#define QIO_TBB_FLOW_USES_INPUT_NODE 1
 #endif
 #endif
 

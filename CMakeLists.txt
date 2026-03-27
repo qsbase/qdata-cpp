@@ -121,4 +121,20 @@ if(QDATA_BUILD_TESTS)
                 $<TARGET_FILE:qdata_roundtrip_file>
                 $<TARGET_FILE:qdata_roundtrip_memory>
     )
+    find_program(CONDA_EXECUTABLE conda QUIET)
+    if(CONDA_EXECUTABLE)
+        set(QDATA_RCPP_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/tests/rcpp/run_flow_compat_test.sh)
+        add_test(
+            NAME qdata_rcppparallel_flow_compat
+            COMMAND bash
+                    ${QDATA_RCPP_TEST_SCRIPT}
+                    ${CONDA_EXECUTABLE}
+        )
+        set_tests_properties(
+            PROPERTIES
+            TIMEOUT 1800
+        )
+    else()
+        message(STATUS "conda not found; skipping RcppParallel conda-backed tests")
+    endif()
 endif()

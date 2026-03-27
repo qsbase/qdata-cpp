@@ -7,6 +7,7 @@ QS_EXTENDED_TESTS ?= 1
 ROWS ?=
 REPS ?=
 LICENSE_DIR ?= LICENSES
+RCPP_TEST_ENVS_DIR ?= tests/rcpp/.conda-envs
 
 BENCH_ARGS :=
 ifneq ($(strip $(ROWS)),)
@@ -16,7 +17,7 @@ ifneq ($(strip $(REPS)),)
 BENCH_ARGS += $(REPS)
 endif
 
-.PHONY: all configure example bench benchmark benchmark-build test test-extended get-license-files clean distclean
+.PHONY: all configure example bench benchmark benchmark-build test test-extended test-rcpp-parallel get-license-files clean distclean
 
 all: configure
 	$(CMAKE) --build $(BUILD_DIR)
@@ -42,6 +43,10 @@ test-extended: configure
 	$(CMAKE) --build $(BUILD_DIR)
 	QS_EXTENDED_TESTS=$(QS_EXTENDED_TESTS) $(CTEST) --test-dir $(BUILD_DIR) $(CTEST_FLAGS)
 
+test-rcpp-parallel: configure
+	$(CTEST) --test-dir $(BUILD_DIR) $(CTEST_FLAGS) -R '^qdata_rcppparallel_flow_compat$$'
+
+
 get-license-files:
 	@mkdir -p $(LICENSE_DIR)
 	curl -fsSL https://www.gnu.org/licenses/gpl-3.0.txt -o LICENSE
@@ -50,6 +55,10 @@ get-license-files:
 
 clean:
 	@if [ -d "$(BUILD_DIR)" ]; then $(CMAKE) --build $(BUILD_DIR) --target clean; fi
+	@if [ -d "$(RCPP_TEST_ENVS_DIR)" ]; then $(CMAKE) -E rm -rf "$(RCPP_TEST_ENVS_DIR)"; fi
+	@if [ -d "tests/rcpp/.conda-pkgs" ]; then $(CMAKE) -E rm -rf "tests/rcpp/.conda-pkgs"; fi
 
 distclean:
 	$(CMAKE) -E rm -rf $(BUILD_DIR)
+	$(CMAKE) -E rm -rf $(RCPP_TEST_ENVS_DIR)
+	$(CMAKE) -E rm -rf tests/rcpp/.conda-pkgs
