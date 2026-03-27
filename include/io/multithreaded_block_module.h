@@ -217,8 +217,6 @@ struct BlockCompressWriterMT {
 
 template <class stream_reader, class decompressor, class error_policy>
 struct BlockCompressReaderMT {
-    static constexpr std::size_t read_inflight_limit = 12;
-
     stream_reader & myFile;
     tbb::enumerable_thread_specific<decompressor> dp;
     xxHashEnv hp;
@@ -237,7 +235,6 @@ struct BlockCompressReaderMT {
     tbb::task_group_context tgc;
     tbb::flow::graph myGraph;
     qio::tbb_compat::source_node<OrderedBlock> reader_node;
-    tbb::flow::limiter_node<OrderedBlock> decompressor_limiter_node;
     tbb::flow::function_node<OrderedBlock, OrderedBlock> decompressor_node;
     tbb::flow::sequencer_node<OrderedBlock> sequencer_node;
     BlockCompressReaderMT(stream_reader & f) :
@@ -258,7 +255,6 @@ struct BlockCompressReaderMT {
     [this](OrderedBlock & zblock) {
         return read_next_zblock(zblock);
     }),
-    decompressor_limiter_node(this->myGraph, read_inflight_limit),
     decompressor_node(this->myGraph, tbb::flow::unlimited,
     [this](OrderedBlock zblock) {
         typename tbb::enumerable_thread_specific<decompressor>::reference dp_local = dp.local();
@@ -281,8 +277,7 @@ struct BlockCompressReaderMT {
         return block.blocknumber;
     })
     {
-        tbb::flow::make_edge(reader_node, decompressor_limiter_node);
-        tbb::flow::make_edge(decompressor_limiter_node, decompressor_node);
+        tbb::flow::make_edge(reader_node, decompressor_node);
         tbb::flow::make_edge(decompressor_node, sequencer_node);
         reader_node.activate();
     }
@@ -314,7 +309,6 @@ struct BlockCompressReaderMT {
         OrderedBlock block;
         while( true ) {
             if( sequencer_node.try_get(block) ) {
-                qio::tbb_compat::decrementer(decompressor_limiter_node).try_put(tbb::flow::continue_msg{});
                 available_blocks.push(current_block);
                 current_block = block.block;
                 current_blocksize = block.blocksize;
