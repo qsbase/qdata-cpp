@@ -42,6 +42,10 @@ int main() {
 The test suite is driven through `Rscript` and requires the `qs2`, `stringi`,
 and `stringfish` packages when `QDATA_BUILD_TESTS=ON`.
 
+The RcppParallel flow-graph compatibility probe runs in Linux CI only. It
+covers both the bundled classic TBB path and an external system oneTBB path
+configured through `TBB_INC` and `TBB_LIB`.
+
 ## Core qdata types
 
 qdata is built around a small set of data types:

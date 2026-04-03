@@ -1,7 +1,0 @@
-name: qdata-rcpp-mixed
-channels:
-  - conda-forge
-dependencies:
-  - r-base
-  - r-rcpp
-  - tbb-devel

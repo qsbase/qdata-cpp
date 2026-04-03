@@ -39,5 +39,3 @@ perf.data*
 core
 core.*
 docs/tmp/*
-tests/rcpp/.conda-envs/
-tests/rcpp/.conda-pkgs/

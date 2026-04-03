@@ -1,7 +1,0 @@
-name: qdata-rcpp-conda
-channels:
-  - conda-forge
-dependencies:
-  - r-base
-  - r-rcpp
-  - r-rcppparallel

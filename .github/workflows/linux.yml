@@ -68,3 +68,52 @@ jobs:
         env:
           QS_EXTENDED_TESTS: "1"
         run: ctest --test-dir build --output-on-failure -V
+
+  rcppparallel-flow-compat:
+    name: Ubuntu (RcppParallel ${{ matrix.label }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: classic TBB
+            variant: classic
+            expected_api: source_node
+            install_system_tbb: "false"
+          - label: system oneTBB
+            variant: onetbb
+            expected_api: input_node
+            install_system_tbb: "true"
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install system oneTBB
+        if: matrix.install_system_tbb == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libtbb-dev
+
+      - name: Export system TBB paths
+        if: matrix.install_system_tbb == 'true'
+        run: |
+          echo "TBB_INC=$(pkg-config --variable=includedir tbb)" >> "$GITHUB_ENV"
+          echo "TBB_LIB=$(pkg-config --variable=libdir tbb)" >> "$GITHUB_ENV"
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install Rcpp and RcppParallel
+        run: Rscript tests/rcpp/install_rcppparallel.R "${{ matrix.variant }}"
+
+      - name: Run flow-graph compatibility probe
+        run: |
+          Rscript tests/rcpp/tbb_flow_compat.R \
+            "${{ matrix.expected_api }}"

@@ -1,6 +1,0 @@
-name: qdata-rcpp-cran
-channels:
-  - conda-forge
-dependencies:
-  - r-base
-  - r-rcpp
