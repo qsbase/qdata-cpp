@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.18)
 
 project(qdata_cpp VERSION 1.0.0 LANGUAGES CXX)
 
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the build type." FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release MinSizeRel RelWithDebInfo)
+endif()
+
 option(QDATA_USE_TBB "Link oneTBB for multithreaded qdata/io consumers" ON)
 
 find_package(PkgConfig QUIET)

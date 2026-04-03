@@ -61,6 +61,7 @@ jobs:
       - name: Configure
         run: |
           cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
             -DQDATA_USE_TBB=${{ matrix.qdata_use_tbb }} \
             -DQDATA_BUILD_BENCHMARKS=ON \
             -DQDATA_BUILD_EXAMPLES=ON \
