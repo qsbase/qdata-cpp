@@ -2,6 +2,7 @@
 #define QDATA_FORMAT_WRITE_TRAITS_H
 
 #include "traits.h"
+#include "detail/r_compat_limits.h"
 
 #include <cstddef>
 #include <iterator>
@@ -27,6 +28,9 @@ void write_object(serializer& s, const T& x);
 
 class serializer {
 public:
+    explicit serializer(const std::size_t max_nesting_depth = detail::default_qdata_max_nesting_depth) :
+    max_nesting_depth_(detail::checked_max_nesting_depth(max_nesting_depth)) {}
+
     virtual ~serializer() = default;
 
     virtual void write_nil() = 0;
@@ -58,9 +62,38 @@ public:
     virtual void defer_complex_payload(const void* object_ptr, detail::erased_write_fn emit_fn) = 0;
     virtual void defer_string_payload(const void* object_ptr, detail::erased_write_fn emit_fn) = 0;
     virtual void defer_raw_payload(const void* object_ptr, detail::erased_write_fn emit_fn) = 0;
+
+    void enter_object_scope() {
+        if(current_nesting_depth_ >= max_nesting_depth_) {
+            throw std::runtime_error("qdata nesting depth exceeds configured max_depth");
+        }
+        ++current_nesting_depth_;
+    }
+
+    void leave_object_scope() noexcept {
+        --current_nesting_depth_;
+    }
+
+private:
+    std::size_t max_nesting_depth_;
+    std::size_t current_nesting_depth_ = 0;
 };
 
 namespace detail {
+
+class serializer_depth_guard {
+public:
+    explicit serializer_depth_guard(serializer& serializer) : serializer_(serializer) {
+        serializer_.enter_object_scope();
+    }
+
+    ~serializer_depth_guard() {
+        serializer_.leave_object_scope();
+    }
+
+private:
+    serializer& serializer_;
+};
 
 template <class T>
 using decay_t = std::decay_t<T>;
@@ -424,6 +457,7 @@ private:
 };
 
 inline void write_object(serializer& s, const nil_value&) {
+    detail::serializer_depth_guard depth_guard(s);
     s.write_nil();
 }
 
@@ -439,6 +473,7 @@ inline void write_object(serializer& s, const writable& x) {
 
 template <class T>
 void write_object(serializer& s, const T& x) {
+    detail::serializer_depth_guard depth_guard(s);
     using decayed_type = detail::decay_t<T>;
     if constexpr (detail::has_logical_traits<decayed_type>::value) {
         detail::write_logical_vector(s, x);

@@ -4,19 +4,21 @@
 #include "../write_traits.h"
 #include "file_headers.h"
 #include "memory_stream.h"
+#include "r_compat_limits.h"
 
-#include "io/block_module.h"
-#include "io/filestream_module.h"
-#include "io/zstd_module.h"
+#include "../../io/block_module.h"
+#include "../../io/filestream_module.h"
+#include "../../io/zstd_module.h"
 
 #ifdef QIO_HAS_TBB
 #include <tbb/global_control.h>
-#include "io/multithreaded_block_module.h"
+#include "../../io/multithreaded_block_module.h"
 #endif
 
 #include <complex>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -34,17 +36,24 @@ inline std::size_t checked_serialized_size(const std::uint64_t value, const char
 }
 
 inline std::uint32_t checked_attr_count(const std::size_t value) {
-    if(value > static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
-        throw std::runtime_error("attribute count exceeds qdata's uint32 limit");
+    if(value > static_cast<std::size_t>(max_r_compatible_attr_count)) {
+        throw std::runtime_error("attribute count exceeds qdata's R-compatible INT_MAX limit");
     }
     return static_cast<std::uint32_t>(value);
 }
 
 inline std::uint32_t checked_string_length(const std::size_t value) {
-    if(value > static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max() - 1)) {
-        throw std::runtime_error("string length exceeds qdata's uint32 limit");
+    if(value > static_cast<std::size_t>(max_r_compatible_string_length)) {
+        throw std::runtime_error("string length exceeds qdata's R-compatible string length limit");
     }
     return static_cast<std::uint32_t>(value);
+}
+
+inline std::uint64_t checked_object_length(const std::size_t value, const char* const what) {
+    if(static_cast<std::uint64_t>(value) > max_r_compatible_vector_length) {
+        throw std::runtime_error(std::string(what) + " exceeds qdata's R-compatible vector length limit");
+    }
+    return static_cast<std::uint64_t>(value);
 }
 
 inline int normalized_write_nthreads(const int value) {
@@ -65,7 +74,8 @@ inline void validate_write_arguments(const int compress_level) {
 template <class BlockWriter>
 class qdata_stream_writer final : public serializer {
 public:
-    explicit qdata_stream_writer(BlockWriter& writer) :
+    explicit qdata_stream_writer(BlockWriter& writer, const std::size_t max_depth = default_qdata_max_nesting_depth) :
+    serializer(max_depth),
     writer_(writer),
     string_payloads_(),
     complex_payloads_(),
@@ -89,31 +99,31 @@ public:
     }
 
     void begin_logical_vector(std::size_t size, std::size_t attr_count) override {
-        write_header_lglsxp(static_cast<std::uint64_t>(size), checked_attr_count(attr_count));
+        write_header_lglsxp(checked_object_length(size, "logical vector length"), checked_attr_count(attr_count));
     }
 
     void begin_integer_vector(std::size_t size, std::size_t attr_count) override {
-        write_header_intsxp(static_cast<std::uint64_t>(size), checked_attr_count(attr_count));
+        write_header_intsxp(checked_object_length(size, "integer vector length"), checked_attr_count(attr_count));
     }
 
     void begin_real_vector(std::size_t size, std::size_t attr_count) override {
-        write_header_realsxp(static_cast<std::uint64_t>(size), checked_attr_count(attr_count));
+        write_header_realsxp(checked_object_length(size, "real vector length"), checked_attr_count(attr_count));
     }
 
     void begin_complex_vector(std::size_t size, std::size_t attr_count) override {
-        write_header_cplxsxp(static_cast<std::uint64_t>(size), checked_attr_count(attr_count));
+        write_header_cplxsxp(checked_object_length(size, "complex vector length"), checked_attr_count(attr_count));
     }
 
     void begin_string_vector(std::size_t size, std::size_t attr_count) override {
-        write_header_strsxp(static_cast<std::uint64_t>(size), checked_attr_count(attr_count));
+        write_header_strsxp(checked_object_length(size, "string vector length"), checked_attr_count(attr_count));
     }
 
     void begin_raw_vector(std::size_t size, std::size_t attr_count) override {
-        write_header_rawsxp(static_cast<std::uint64_t>(size), checked_attr_count(attr_count));
+        write_header_rawsxp(checked_object_length(size, "raw vector length"), checked_attr_count(attr_count));
     }
 
     void begin_list_vector(std::size_t size, std::size_t attr_count) override {
-        write_header_vecsxp(static_cast<std::uint64_t>(size), checked_attr_count(attr_count));
+        write_header_vecsxp(checked_object_length(size, "list length"), checked_attr_count(attr_count));
     }
 
     void write_logical_data(const std::int32_t* data, std::size_t size) override {
@@ -408,9 +418,10 @@ template <class StreamWriter, class Compressor>
 inline std::uint64_t write_single_thread(StreamWriter& stream,
                                          const int compress_level,
                                          const void* object_ptr,
-                                         const erased_write_fn write_fn) {
+                                         const erased_write_fn write_fn,
+                                         const std::size_t max_depth) {
     BlockCompressWriter<StreamWriter, Compressor, xxHashEnv, StdErrorPolicy, true> block_writer(stream, compress_level);
-    qdata_stream_writer<decltype(block_writer)> stream_writer(block_writer);
+    qdata_stream_writer<decltype(block_writer)> stream_writer(block_writer, max_depth);
     write_fn(stream_writer, object_ptr);
     stream_writer.flush_payloads();
     return block_writer.finish();
@@ -422,10 +433,11 @@ inline std::uint64_t write_multi_thread(StreamWriter& stream,
                                         const int compress_level,
                                         const int nthreads,
                                         const void* object_ptr,
-                                        const erased_write_fn write_fn) {
+                                        const erased_write_fn write_fn,
+                                        const std::size_t max_depth) {
     tbb::global_control gc(tbb::global_control::parameter::max_allowed_parallelism, normalized_write_nthreads(nthreads));
     BlockCompressWriterMT<StreamWriter, Compressor, xxHashEnv, StdErrorPolicy, true> block_writer(stream, compress_level);
-    qdata_stream_writer<decltype(block_writer)> stream_writer(block_writer);
+    qdata_stream_writer<decltype(block_writer)> stream_writer(block_writer, max_depth);
     write_fn(stream_writer, object_ptr);
     stream_writer.flush_payloads();
     return block_writer.finish();
@@ -438,7 +450,8 @@ inline std::uint64_t write_qdata_object(StreamWriter& stream,
                                         const erased_write_fn write_fn,
                                         const int compress_level,
                                         const bool shuffle,
-                                        const int nthreads) {
+                                        const int nthreads,
+                                        const std::size_t max_depth) {
     validate_write_arguments(compress_level);
     if(shuffle) {
 #ifdef QIO_HAS_TBB
@@ -448,7 +461,8 @@ inline std::uint64_t write_qdata_object(StreamWriter& stream,
                 compress_level,
                 nthreads,
                 object_ptr,
-                write_fn
+                write_fn,
+                max_depth
             );
         }
 #endif
@@ -456,7 +470,8 @@ inline std::uint64_t write_qdata_object(StreamWriter& stream,
             stream,
             compress_level,
             object_ptr,
-            write_fn
+            write_fn,
+            max_depth
         );
     }
 
@@ -467,7 +482,8 @@ inline std::uint64_t write_qdata_object(StreamWriter& stream,
             compress_level,
             nthreads,
             object_ptr,
-            write_fn
+            write_fn,
+            max_depth
         );
     }
 #endif
@@ -475,7 +491,8 @@ inline std::uint64_t write_qdata_object(StreamWriter& stream,
         stream,
         compress_level,
         object_ptr,
-        write_fn
+        write_fn,
+        max_depth
     );
 }
 
@@ -484,14 +501,32 @@ inline void save_erased(const std::string& file,
                         const erased_write_fn write_fn,
                         const int compress_level,
                         const bool shuffle,
-                        const int nthreads) {
+                        const int nthreads,
+                        const std::size_t max_depth) {
     OfStreamWriter stream(file.c_str());
     if(!stream.isValid()) {
         throw std::runtime_error("failed to open file for writing: " + file);
     }
     write_qdata_header(stream, shuffle);
-    const auto hash = write_qdata_object(stream, object_ptr, write_fn, compress_level, shuffle, nthreads);
+    const auto hash = write_qdata_object(stream, object_ptr, write_fn, compress_level, shuffle, nthreads, max_depth);
     write_qx_hash(stream, hash);
+}
+
+inline void serialize_erased_impl(void* const buffer_ctx,
+                                  const output_buffer_ops buffer_ops,
+                                  const void* object_ptr,
+                                  const erased_write_fn write_fn,
+                                  const int compress_level,
+                                  const bool shuffle,
+                                  const int nthreads,
+                                  const std::size_t max_depth) {
+    erased_memory_writer stream(buffer_ctx, buffer_ops);
+    write_qdata_header(stream, shuffle);
+    const auto hash = write_qdata_object(stream, object_ptr, write_fn, compress_level, shuffle, nthreads, max_depth);
+    const auto end_position = stream.tellp();
+    write_qx_hash(stream, hash);
+    stream.seekp(end_position);
+    buffer_ops.resize_fn(buffer_ctx, checked_serialized_size(end_position, "serialized qdata size"));
 }
 
 template <class Buffer>
@@ -499,14 +534,20 @@ inline Buffer serialize_erased(const void* object_ptr,
                                const erased_write_fn write_fn,
                                const int compress_level,
                                const bool shuffle,
-                               const int nthreads) {
-    memory_writer<Buffer> stream;
-    write_qdata_header(stream, shuffle);
-    const auto hash = write_qdata_object(stream, object_ptr, write_fn, compress_level, shuffle, nthreads);
-    const auto end_position = stream.tellp();
-    write_qx_hash(stream, hash);
-    stream.seekp(end_position);
-    return stream.take_bytes(checked_serialized_size(end_position, "serialized qdata size"));
+                               const int nthreads,
+                               const std::size_t max_depth) {
+    Buffer output;
+    serialize_erased_impl(
+        static_cast<void*>(std::addressof(output)),
+        make_output_buffer_ops<Buffer>(),
+        object_ptr,
+        write_fn,
+        compress_level,
+        shuffle,
+        nthreads,
+        max_depth
+    );
+    return output;
 }
 
 } // namespace detail

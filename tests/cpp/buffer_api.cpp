@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -29,6 +30,22 @@ void expect_integer_payload(const qdata::object& obj, const std::vector<std::int
     }
 }
 
+template <class Buffer>
+Buffer serialize_via_erased_api(const std::vector<std::int32_t>& input) {
+    Buffer output;
+    qdata::detail::serialize_erased_impl(
+        static_cast<void*>(std::addressof(output)),
+        qdata::detail::make_output_buffer_ops<Buffer>(),
+        std::addressof(input),
+        &qdata::detail::write_erased<std::vector<std::int32_t>>,
+        3,
+        true,
+        1,
+        qdata::detail::default_qdata_max_nesting_depth
+    );
+    return output;
+}
+
 } // namespace
 
 int main() {
@@ -54,6 +71,26 @@ int main() {
     const auto text = qdata::serialize<std::string>(input);
     debug_log("deserialize std::string");
     expect_integer_payload(qdata::deserialize(text), input);
+
+    debug_log("serialize_erased_impl std::vector<std::byte>");
+    const auto bytes_erased = serialize_via_erased_api<std::vector<std::byte>>(input);
+    debug_log("deserialize erased std::vector<std::byte>");
+    expect_integer_payload(qdata::deserialize(bytes_erased), input);
+
+    debug_log("serialize_erased_impl std::vector<char>");
+    const auto chars_erased = serialize_via_erased_api<std::vector<char>>(input);
+    debug_log("deserialize erased std::vector<char>");
+    expect_integer_payload(qdata::deserialize(chars_erased), input);
+
+    debug_log("serialize_erased_impl std::vector<std::uint8_t>");
+    const auto uints_erased = serialize_via_erased_api<std::vector<std::uint8_t>>(input);
+    debug_log("deserialize erased std::vector<std::uint8_t>");
+    expect_integer_payload(qdata::deserialize(uints_erased), input);
+
+    debug_log("serialize_erased_impl std::string");
+    const auto text_erased = serialize_via_erased_api<std::string>(input);
+    debug_log("deserialize erased std::string");
+    expect_integer_payload(qdata::deserialize(text_erased), input);
 
     debug_log("done");
     return 0;

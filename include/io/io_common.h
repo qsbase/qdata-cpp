@@ -11,30 +11,31 @@
 
 #include "zstd.h"
 #define XXH_INLINE_ALL
-#include "xxhash/xxhash.h"
+#include "../xxhash/xxhash.h"
 #undef XXH_INLINE_ALL
 
-#include "blosc/shuffle_routines.h"
-#include "blosc/unshuffle_routines.h"
+#include "../blosc/shuffle_routines.h"
+#include "../blosc/unshuffle_routines.h"
 
-#ifdef QS2_DYNAMIC_BLOCKSIZE
-static uint64_t MAX_BLOCKSIZE = 1048576ULL;
-static constexpr uint64_t BLOCK_RESERVE = 64ULL;
-static uint64_t MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE; // smallest allowable block size, except for last block
-static uint64_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
-#else
 static constexpr uint32_t MAX_BLOCKSIZE = 1048576UL;
 static constexpr uint32_t BLOCK_RESERVE = 64UL;
 static constexpr uint32_t MIN_BLOCKSIZE = MAX_BLOCKSIZE - BLOCK_RESERVE; // smallest allowable block size, except for last block
-static const uint32_t MAX_ZBLOCKSIZE = ZSTD_compressBound(MAX_BLOCKSIZE);
+static constexpr uint32_t MAX_ZBLOCKSIZE = static_cast<uint32_t>(ZSTD_COMPRESSBOUND(MAX_BLOCKSIZE));
 // 2^20 ... we save blocksize as uint32_t, so the last 12 MSBs can be used to store metadata
 // This blocksize is 2x larger than `qs` and seems to be a better tradeoff overall in benchmarks
-#endif
 
 // 11111111 11110000 00000000 00000000 in binary, First 12 MSBs can be used for metadata in either zblock or block
 // currently only using the first bit for metadata
 static constexpr uint32_t BLOCK_METADATA = 0x80000000; // 10000000 00000000 00000000 00000000
 static constexpr uint32_t SHUFFLE_MASK = (1ULL << 31);
+
+inline constexpr uint32_t compressed_block_size(const uint32_t zsize) noexcept {
+    return zsize & (~BLOCK_METADATA);
+}
+
+inline constexpr bool compressed_block_size_fits_buffer(const uint32_t zsize) noexcept {
+    return static_cast<uint64_t>(compressed_block_size(zsize)) <= MAX_ZBLOCKSIZE;
+}
 
 // MAKE_UNIQUE_BLOCK and MAKE_SHARED_BLOCK macros should be used ONLY in initializer lists
 #if __cplusplus >= 201402L // Check for C++14 or above

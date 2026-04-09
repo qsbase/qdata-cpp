@@ -1,9 +1,9 @@
 #ifndef _QIO_MULTITHREADED_BLOCK_MODULE_H
 #define _QIO_MULTITHREADED_BLOCK_MODULE_H
 
-#include "io/io_common.h"
-#include "io/tbb_flow_compat.h"
-#include "io/xxhash_module.h"
+#include "io_common.h"
+#include "tbb_flow_compat.h"
+#include "xxhash_module.h"
 
 #include <atomic>
 #include <string>
@@ -291,11 +291,16 @@ struct BlockCompressReaderMT {
             end_of_file.store(true);
             return false;
         }
+        const uint32_t zbytes = compressed_block_size(zsize);
+        if(!compressed_block_size_fits_buffer(zsize)) {
+            tgc.cancel_group_execution();
+            return false;
+        }
         if(!available_zblocks.try_pop(zblock.block)) {
             zblock.block = MAKE_SHARED_BLOCK_ASSIGNMENT(MAX_ZBLOCKSIZE);
         }
-        uint32_t bytes_read = this->myFile.read(zblock.block.get(), zsize & (~BLOCK_METADATA));
-        if(bytes_read != (zsize & (~BLOCK_METADATA))) {
+        uint32_t bytes_read = this->myFile.read(zblock.block.get(), zbytes);
+        if(bytes_read != zbytes) {
             end_of_file.store(true);
             return false;
         }
@@ -374,7 +379,10 @@ struct BlockCompressReaderMT {
             std::memcpy(outbuffer, current_block.get()+data_offset, bytes_accounted);
             while(len - bytes_accounted >= MAX_BLOCKSIZE) {
                 get_new_block();
-                std::memcpy(outbuffer + bytes_accounted, current_block.get(), current_blocksize);
+                if(current_blocksize != MAX_BLOCKSIZE) {
+                    cleanup_and_throw("Corrupted block data");
+                }
+                std::memcpy(outbuffer + bytes_accounted, current_block.get(), MAX_BLOCKSIZE);
                 bytes_accounted += MAX_BLOCKSIZE;
                 data_offset = MAX_BLOCKSIZE;
             }

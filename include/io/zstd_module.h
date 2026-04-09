@@ -1,8 +1,8 @@
 #ifndef _QS2_ZSTD_MODULE_H
 #define _QS2_ZSTD_MODULE_H
 
-#include "io/io_common.h"
-#include "io/xgboost_blockshuffle_model.h"
+#include "io_common.h"
+#include "xgboost_blockshuffle_model.h"
 
 
 static constexpr uint32_t COMPRESSION_ERROR = 0;

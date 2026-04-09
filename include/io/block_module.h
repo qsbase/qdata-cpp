@@ -1,8 +1,8 @@
 #ifndef _QS2_BLOCK_MODULE_H
 #define _QS2_BLOCK_MODULE_H
 
-#include "io/io_common.h"
-#include "io/xxhash_module.h"
+#include "io_common.h"
+#include "xxhash_module.h"
 
 // direct_mem switch does nothing, but is kept for parity with MT code
 template <class stream_writer, class compressor, class hasher, class error_policy, bool direct_mem>
@@ -130,9 +130,13 @@ struct BlockCompressReader {
         if(!ok) {
             cleanup_and_throw("Unexpected end of file while reading next block size");
         }
+        const uint32_t zbytes = compressed_block_size(zsize);
+        if(!compressed_block_size_fits_buffer(zsize)) {
+            cleanup_and_throw("Compressed block size exceeds internal maximum");
+        }
         hp.update(zsize);
-        uint32_t bytes_read = myFile.read(zblock.get(), zsize & (~BLOCK_METADATA));
-        if(bytes_read != (zsize & (~BLOCK_METADATA))) {
+        uint32_t bytes_read = myFile.read(zblock.get(), zbytes);
+        if(bytes_read != zbytes) {
             cleanup_and_throw("Unexpected end of file while reading next block");
         }
         hp.update(zblock.get(), bytes_read);
@@ -145,9 +149,13 @@ struct BlockCompressReader {
         if(!ok) {
             cleanup_and_throw("Unexpected end of file while reading next block size");
         }
+        const uint32_t zbytes = compressed_block_size(zsize);
+        if(!compressed_block_size_fits_buffer(zsize)) {
+            cleanup_and_throw("Compressed block size exceeds internal maximum");
+        }
         hp.update(zsize);
-        uint32_t bytes_read = myFile.read(zblock.get(), zsize & (~BLOCK_METADATA));
-        if(bytes_read != (zsize & (~BLOCK_METADATA))) {
+        uint32_t bytes_read = myFile.read(zblock.get(), zbytes);
+        if(bytes_read != zbytes) {
             cleanup_and_throw("Unexpected end of file while reading next block");
         }
         hp.update(zblock.get(), bytes_read);
@@ -197,6 +205,9 @@ struct BlockCompressReader {
             std::memcpy(outbuffer, block.get()+data_offset, bytes_accounted);
             while(len - bytes_accounted >= MAX_BLOCKSIZE) {
                 decompress_direct(outbuffer + bytes_accounted);
+                if(current_blocksize != MAX_BLOCKSIZE) {
+                    cleanup_and_throw("Corrupted block data");
+                }
                 bytes_accounted += MAX_BLOCKSIZE;
                 data_offset = MAX_BLOCKSIZE;
             }

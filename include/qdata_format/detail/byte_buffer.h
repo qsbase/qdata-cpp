@@ -10,6 +10,16 @@
 namespace qdata {
 namespace detail {
 
+using output_buffer_size_fn = std::size_t (*)(void*);
+using output_buffer_resize_fn = void (*)(void*, std::size_t);
+using output_buffer_data_fn = void* (*)(void*);
+
+struct output_buffer_ops {
+    output_buffer_size_fn size_fn;
+    output_buffer_resize_fn resize_fn;
+    output_buffer_data_fn data_fn;
+};
+
 template <class Buffer, class Enable = void>
 struct is_byte_input_buffer : std::false_type {};
 
@@ -68,6 +78,34 @@ template <class Buffer>
 inline const void* buffer_data(const Buffer& buffer) {
     validate_input_buffer<Buffer>();
     return static_cast<const void*>(buffer.data());
+}
+
+template <class Buffer>
+inline std::size_t erased_output_buffer_size(void* const buffer_ptr) {
+    validate_output_buffer<Buffer>();
+    return static_cast<Buffer*>(buffer_ptr)->size();
+}
+
+template <class Buffer>
+inline void erased_output_buffer_resize(void* const buffer_ptr, const std::size_t size) {
+    validate_output_buffer<Buffer>();
+    static_cast<Buffer*>(buffer_ptr)->resize(size);
+}
+
+template <class Buffer>
+inline void* erased_output_buffer_data(void* const buffer_ptr) {
+    validate_output_buffer<Buffer>();
+    return static_cast<void*>(static_cast<Buffer*>(buffer_ptr)->data());
+}
+
+template <class Buffer>
+inline output_buffer_ops make_output_buffer_ops() {
+    validate_output_buffer<Buffer>();
+    return output_buffer_ops{
+        &erased_output_buffer_size<Buffer>,
+        &erased_output_buffer_resize<Buffer>,
+        &erased_output_buffer_data<Buffer>
+    };
 }
 
 inline std::size_t checked_required_capacity(const std::size_t position,

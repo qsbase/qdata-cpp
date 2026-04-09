@@ -1,7 +1,7 @@
 #ifndef _QS2_XXHASH_MODULE_H
 #define _QS2_XXHASH_MODULE_H
 
-#include "io/io_common.h"
+#include "io_common.h"
 
 struct xxHashEnv {
     XXH3_state_t* state;

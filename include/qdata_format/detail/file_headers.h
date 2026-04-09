@@ -7,8 +7,8 @@
 #include <string>
 
 #include "constants.h"
-#include "io/io_common.h"
-#include "io/xxhash_module.h"
+#include "../../io/io_common.h"
+#include "../../io/xxhash_module.h"
 
 static constexpr uint8_t QS2_CURRENT_FORMAT_VER = 1_u8;
 static constexpr uint8_t QDATA_CURRENT_FORMAT_VER = 1_u8;

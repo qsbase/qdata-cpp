@@ -100,6 +100,12 @@ if(QDATA_BUILD_TESTS)
     add_test(NAME qdata_buffer_api COMMAND qdata_buffer_api)
     set_tests_properties(qdata_buffer_api PROPERTIES TIMEOUT 120)
 
+    add_executable(qdata_compat_limits tests/cpp/compat_limits.cpp)
+    target_compile_features(qdata_compat_limits PRIVATE cxx_std_17)
+    target_link_libraries(qdata_compat_limits PRIVATE qdata)
+    add_test(NAME qdata_compat_limits COMMAND qdata_compat_limits)
+    set_tests_properties(qdata_compat_limits PROPERTIES TIMEOUT 120)
+
     find_program(RSCRIPT_EXECUTABLE Rscript REQUIRED)
     execute_process(
         COMMAND ${RSCRIPT_EXECUTABLE} -e

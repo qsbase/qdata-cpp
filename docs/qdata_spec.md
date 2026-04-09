@@ -106,9 +106,31 @@ real_vector rvec_moved = get<real_vector>(std::move(obj)); // moves the real_vec
 - `string_ref` exposes `is_na()` and `view()`, and implicitly converts to `std::string_view`.
 - That implicit conversion is lossy for `NA` and yields an empty view.
 
+## Compatibility Limits
+
+qdata-cpp uses R-compatible size limits for serialized structure sizes:
+
+- vector and list lengths are limited to `R_XLEN_T_MAX` compatibility (`2^52`)
+- attribute counts are limited to `R_LEN_T_MAX` / `INT_MAX`
+- string payload lengths and attribute-name lengths are limited to `INT_MAX`
+
+These limits apply on both read and write. Native qdata-cpp therefore stays within the same intended R-compatible format subset instead of emitting or materializing larger structures that the R layer would later reject.
+
+## Nesting Limit
+
+qdata-cpp recursive read and write traversal uses a `max_depth` budget with a default of `512`.
+
+This applies to nested list structure and recursively nested attribute values. The library rejects deeper inputs or objects instead of relying on unbounded native call-stack recursion.
+
+## Attribute Semantics
+
+Native qdata-cpp preserves attributes structurally as `name + object` pairs on the native object model.
+
+It does not try to emulate R's special attribute setter semantics for attributes such as `dim`, `dimnames`, `class`, `tsp`, `row.names`, or `names`. Those semantics are interpreted in the R layer, not in the native qdata-cpp object model.
+
 ## Write-side traits
 
-`C++ -> qdata` is more permissive than the read interface. It serializes directly from the source object whenever possible, and recurses naturally through nested containers.
+`C++ -> qdata` is more permissive than the read interface. It serializes directly from the source object whenever possible, and recurses naturally through nested containers, within the compatibility and nesting limits described above.
 
 The write side is organized around four ideas:
 

@@ -2,7 +2,7 @@
 #ifndef _QS2_FILESTREAM_MODULE_H
 #define _QS2_FILESTREAM_MODULE_H
 
-#include "io/io_common.h"
+#include "io_common.h"
 
 // in binary mode, seek/tell should be byte offsets from beginning of the file
 // libstdc++ uses file descriptors under the hood for std::fstream:
@@ -35,7 +35,11 @@ struct IfStreamReader {
 
 struct OfStreamWriter {
     std::ofstream con;
-    OfStreamWriter(const char * const path) : con(path, std::ios::out | std::ios::binary) {}
+    OfStreamWriter(const char * const path) : con(path, std::ios::out | std::ios::binary) {
+        if(con.is_open()) {
+            con.exceptions(std::ios::failbit | std::ios::badbit);
+        }
+    }
     bool isValid() { return con.is_open(); }
     uint32_t write(const char * const ptr, const uint32_t count) {
         con.write(ptr, count);

@@ -48,18 +48,19 @@ private:
     std::uint64_t position_;
 };
 
-template <class Buffer>
-class memory_writer {
+class erased_memory_writer {
 public:
-    memory_writer() : buffer_(), position_(0) {
-        validate_output_buffer<Buffer>();
-    }
+    explicit erased_memory_writer(void* const buffer_ctx, const output_buffer_ops ops) :
+    buffer_ctx_(buffer_ctx),
+    ops_(ops),
+    position_(0) {}
 
     std::uint32_t write(const char* const data, const std::uint64_t size) {
         ensure_capacity(size);
         if(size > 0) {
-            std::memcpy(buffer_.data() + position_, data, static_cast<std::size_t>(size));
-            position_ += size;
+            auto* const buffer = static_cast<char*>(ops_.data_fn(buffer_ctx_));
+            std::memcpy(buffer + position_, data, static_cast<std::size_t>(size));
+            position_ += static_cast<std::size_t>(size);
         }
         return static_cast<std::uint32_t>(size);
     }
@@ -70,14 +71,72 @@ public:
     }
 
     void seekp(const std::uint64_t pos) {
-        if(pos > buffer_.size()) {
+        if(pos > size_bytes()) {
             throw std::out_of_range("Seek position is beyond buffer capacity");
         }
-        position_ = pos;
+        position_ = static_cast<std::size_t>(pos);
     }
 
     std::uint64_t tellp() const {
         return position_;
+    }
+
+private:
+    static constexpr std::size_t initial_capacity_bytes = 1024;
+
+    void* buffer_ctx_;
+    output_buffer_ops ops_;
+    std::size_t position_;
+
+    std::size_t size_bytes() const {
+        return ops_.size_fn(buffer_ctx_);
+    }
+
+    void ensure_capacity(const std::uint64_t additional_size) {
+        const auto required_size = checked_required_capacity(position_, additional_size);
+        if(required_size > size_bytes()) {
+            std::size_t grown_size = size_bytes() > 0 ? size_bytes() : initial_capacity_bytes;
+            while(grown_size < required_size) {
+                if(grown_size > std::size_t(-1) / 2) {
+                    grown_size = required_size;
+                    break;
+                }
+                grown_size *= 2;
+            }
+            ops_.resize_fn(buffer_ctx_, grown_size);
+        }
+    }
+};
+
+template <class Buffer>
+class memory_writer {
+public:
+    memory_writer() :
+    buffer_(),
+    writer_(static_cast<void*>(&buffer_), make_output_buffer_ops<Buffer>()) {
+        validate_output_buffer<Buffer>();
+    }
+
+    memory_writer(const memory_writer&) = delete;
+    memory_writer& operator=(const memory_writer&) = delete;
+    memory_writer(memory_writer&&) = delete;
+    memory_writer& operator=(memory_writer&&) = delete;
+
+    std::uint32_t write(const char* const data, const std::uint64_t size) {
+        return writer_.write(data, size);
+    }
+
+    template <typename T>
+    void writeInteger(const T value) {
+        writer_.writeInteger(value);
+    }
+
+    void seekp(const std::uint64_t pos) {
+        writer_.seekp(pos);
+    }
+
+    std::uint64_t tellp() const {
+        return writer_.tellp();
     }
 
     Buffer take_bytes(const std::size_t size) {
@@ -89,25 +148,8 @@ public:
     }
 
 private:
-    static constexpr std::size_t initial_capacity_bytes = 1024;
-
     Buffer buffer_;
-    std::size_t position_;
-
-    void ensure_capacity(const std::uint64_t additional_size) {
-        const auto required_size = checked_required_capacity(position_, additional_size);
-        if(required_size > buffer_.size()) {
-            std::size_t grown_size = buffer_.size() > 0 ? buffer_.size() : initial_capacity_bytes;
-            while(grown_size < required_size) {
-                if(grown_size > std::size_t(-1) / 2) {
-                    grown_size = required_size;
-                    break;
-                }
-                grown_size *= 2;
-            }
-            buffer_.resize(grown_size);
-        }
-    }
+    erased_memory_writer writer_;
 };
 
 } // namespace detail

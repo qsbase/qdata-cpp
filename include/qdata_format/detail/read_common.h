@@ -2,7 +2,7 @@
 #define QDATA_FORMAT_DETAIL_READ_COMMON_H
 
 #include "constants.h"
-#include "io/io_common.h"
+#include "../../io/io_common.h"
 
 #include <cstdint>
 #include <cstring>
